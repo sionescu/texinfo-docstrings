@@ -25,7 +25,7 @@ upload:
 #	scp -r manual common-lisp.net:/project/cffi/public_html/
 
 clean:
-	find . \( -name "*.pdf" -name "*.html" -name "*.info" -o -name "*.aux" -o -name "*.cp" -o -name "*.fn" -o -name "*.fns" -o -name "*.ky" -o -name "*.log" -o -name "*.pg" -o -name "*.toc" -o -name "*.tp" -o -name "*.vr" -o -name "*.dvi" -o -name "*.cps" -o -name "*.vrs" \) -exec rm {} \;
+	find . \( -name "*.pdf" -o -name "*.html" -o -name "*.info" -o -name "*.aux" -o -name "*.cp" -o -name "*.fn" -o -name "*.fns" -o -name "*.ky" -o -name "*.log" -o -name "*.pg" -o -name "*.toc" -o -name "*.tp" -o -name "*.vr" -o -name "*.dvi" -o -name "*.cps" -o -name "*.vrs" \) -exec rm {} \;
 	rm -rf include manual
 
 # vim: ft=make ts=4 noet
