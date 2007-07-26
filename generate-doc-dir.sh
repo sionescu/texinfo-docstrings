@@ -2,6 +2,7 @@
 
 mkdir doc
 cp licenses/MIT.texinfo doc/license.texinfo
+cp macros.texinfo doc/
 
 manual_filename='babel'
 system='babel'

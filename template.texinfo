@@ -14,6 +14,8 @@
 @c * %%MANUAL-FILENAME%%:           %%PROJECT-DESCRIPTION%%
 @c @end direntry
 
+@include macros.texinfo
+
 @c Show types, functions, and concepts in the same index.
 @syncodeindex tp cp
 @syncodeindex fn cp
