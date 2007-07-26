@@ -58,6 +58,12 @@
 (defvar *texinfo-output*)
 (defvar *texinfo-variables*)
 (defvar *documentation-package*)
+(defvar *documentation-package-name*)
+
+;;; If T, package names are prepended in the documentation.  This
+;;; doesn't affect filenames.  For now this value is sort of hardcoded
+;;; in GENERATE-INCLUDES.  Fix that.
+(defvar *prepend-package-names*)
 
 (defparameter *undocumented-packages*
   #+sbcl '(sb-pcl sb-int sb-kernel sb-sys sb-c)
@@ -207,6 +213,9 @@ symbols or lists of symbols."))
 
 ;;; Node names for DOCUMENTATION instances
 
+(defun package-name-prefix (doc)
+  (format nil "~@[~A:~]" (and *prepend-package-names* (get-package-name doc))))
+
 (defgeneric name-using-kind/name (kind name doc))
 
 (defmethod name-using-kind/name (kind (name string) doc)
@@ -215,12 +224,12 @@ symbols or lists of symbols."))
 
 (defmethod name-using-kind/name (kind (name symbol) doc)
   (declare (ignore kind))
-  (format nil "~A:~A" (package-name (get-package doc)) name))
+  (format nil "~A~A" (package-name-prefix doc) name))
 
 (defmethod name-using-kind/name (kind (name list) doc)
   (declare (ignore kind))
   (assert (setf-name-p name))
-  (format nil "(setf ~A:~A)" (package-name (get-package doc)) (second name)))
+  (format nil "(setf ~A~A)" (package-name-prefix doc) (second name)))
 
 (defmethod name-using-kind/name ((kind (eql 'method)) name doc)
   (format nil "~A~{ ~A~} ~A"
@@ -244,12 +253,12 @@ symbols or lists of symbols."))
 
 (defmethod title-using-kind/name (kind (name symbol) doc)
   (declare (ignore kind))
-  (format nil "~A:~A" (package-name (get-package doc)) name))
+  (format nil "~A~A" (package-name-prefix doc) name))
 
 (defmethod title-using-kind/name (kind (name list) doc)
   (declare (ignore kind))
   (assert (setf-name-p name))
-  (format nil "(setf ~A:~A)" (package-name (get-package doc)) (second name)))
+  (format nil "(setf ~A~A)" (package-name-prefix doc) (second name)))
 
 (defmethod title-using-kind/name ((kind (eql 'method)) name doc)
   (format nil "~{~A ~}~A"
@@ -271,7 +280,7 @@ symbols or lists of symbols."))
                               (structure "struct")
                               (variable "var")
                               (otherwise (symbol-name (get-kind doc))))
-                            (alphanumize (package-name (get-package doc)))
+                            (alphanumize (get-package-name doc))
                             (alphanumize (get-name doc)))))))
     (make-pathname :name name  :type "texinfo")))
 
@@ -282,7 +291,9 @@ symbols or lists of symbols."))
    (kind :initarg :kind :reader get-kind)
    (string :initarg :string :reader get-string)
    (children :initarg :children :initform nil :reader get-children)
-   (package :initform *documentation-package* :reader get-package)))
+   (package :initform *documentation-package* :reader get-package)
+   (package-name :initform *documentation-package-name*
+                 :reader get-package-name)))
 
 (defmethod print-object ((documentation documentation) stream)
   (print-unreadable-object (documentation stream :type t)
@@ -726,7 +737,7 @@ followed another tabulation label or a tabulation body."
           (dolist (slot slots)
             (format *texinfo-output*
                     "@item ~(@code{~A}~#[~:; --- ~]~
-                      ~:{~2*~@[~2:*~A~P: ~{@code{@w{~S}}~^, ~}~]~:^; ~}~)~%~%"
+                      ~:{~2*~@[~2:*~A~P: ~{@code{@w{~A}}~^, ~}~]~:^; ~}~)~%~%"
                     (slot-definition-name slot)
                     (remove
                      nil
@@ -735,10 +746,18 @@ followed another tabulation label or a tabulation body."
                         (if things
                             (list name (length things) things)))
                       '("initarg" "reader"  "writer")
-                      (list
-                       (slot-definition-initargs slot)
-                       (slot-definition-readers slot)
-                       (slot-definition-writers slot)))))
+                      ;; because I couldn't grok that format string
+                      (flet ((symbol-names (list)
+                               (mapcar (lambda (x)
+                                         (if (or *prepend-package-names*
+                                                 (keywordp x))
+                                             (format nil "~(~S~)" x)
+                                             (format nil "~(~A~)" x)))
+                                       list)))
+                        (mapcar #'symbol-names
+                                (list (slot-definition-initargs slot)
+                                      (slot-definition-readers slot)
+                                      (slot-definition-writers slot)))))))
             ;; FIXME: Would be neater to handler as children
             (write-texinfo-string (docstring slot t)))
           (format *texinfo-output* "@end itemize~%~%"))))))
@@ -786,10 +805,12 @@ values of doc-type."
   (nconc (collect-name-documentation symbol)
          (collect-name-documentation (list 'setf symbol))))
 
-(defun collect-documentation (package)
+(defun collect-documentation (package &optional package-name)
   "Collects all documentation for all external symbols of the given
 package, as well as for the package itself."
   (let* ((*documentation-package* (find-package package))
+         (*documentation-package-name*
+          (or package-name (package-name *documentation-package*)))
          (docs nil))
     (check-type package package)
     (do-external-symbols (symbol package)
@@ -818,10 +839,16 @@ markup, you lose."
   (handler-bind ((warning #'muffle-warning))
     (let ((directory (merge-pathnames (pathname directory))))
       (ensure-directories-exist directory)
-      (dolist (package packages)
-        (dolist (doc (collect-documentation (find-package package)))
-          (with-texinfo-file (merge-pathnames (include-pathname doc) directory)
-            (write-texinfo doc))))
+      (let ((*prepend-package-names* (> (length packages) 1)))
+        (dolist (package packages)
+          (dolist (doc (collect-documentation
+                        (find-package package)
+                        (string-downcase (etypecase package
+                                           (symbol (symbol-name package))
+                                           (string package)))))
+            (with-texinfo-file
+                (merge-pathnames (include-pathname doc) directory)
+              (write-texinfo doc)))))
       directory)))
 
 (defun document-package (package &optional filename)
