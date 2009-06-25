@@ -32,7 +32,7 @@ gendocs.sh:
 	wget -O gendocs.sh http://cvs.savannah.gnu.org/viewvc/*checkout*/texinfo/texinfo/util/gendocs.sh
 
 cl-launch.sh:
-	wget -O cl-launch.sh http://fare.tunes.org/files/cl-launch/cl-launch.sh
+	wget -O cl-launch.sh http://common-lisp.net/project/xcvb/cl-launch/cl-launch.sh
 	chmod a+x cl-launch.sh
 
 texinfo-docstrings: cl-launch.sh frontend.lisp
