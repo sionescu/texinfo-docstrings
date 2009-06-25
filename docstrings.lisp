@@ -50,7 +50,7 @@
 (in-package #:texinfo-docstrings)
 
 (defun function-arglist (function)
-  #+sbcl (sb-introspect:function-arglist function)
+  #+sbcl (sb-introspect:function-lambda-list function)
   #-sbcl (error "function-arglist unimplemented"))
 
 ;;;; various specials and parameters
@@ -555,9 +555,7 @@ an item in an itemization."
              ;; end of itemization
              (loop-finish))))
     ;; a single-line itemization isn't.
-    (if (> (count-if (lambda (line) (> (length line) 0)) result) 1)
-        (values lines-consumed `("@itemize" ,@(reverse result) "@end itemize"))
-        nil)))
+    (values lines-consumed `("@itemize" ,@(reverse result) "@end itemize"))))
 
 ;;; table sections
 

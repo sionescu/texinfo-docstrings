@@ -59,8 +59,9 @@
   (namestring
    (make-pathname :directory
                   (pathname-directory
-                   (asdf:system-definition-pathname
-                    (asdf:find-system :texinfo-docstrings))))))
+                   (truename
+                    (asdf:system-definition-pathname
+                     (asdf:find-system :texinfo-docstrings)))))))
 
 (defparameter *gendocs-template-dir*
   (or (getenv "GENDOCS_TEMPLATE_DIR") *sysdir*))
